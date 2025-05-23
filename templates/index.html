@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF 轉 Markdown 工具</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            background: #fff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0,0,0,0.1);
+            width: 90%;
+            max-width: 900px;
+            margin-bottom: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .upload-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 2px dashed #007bff;
+            border-radius: 5px;
+            background-color: #f9f9ff;
+            text-align: center;
+        }
+        .upload-section input[type="file"] {
+            display: none;
+        }
+        .upload-section label {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+        .upload-section label:hover {
+            background-color: #0056b3;
+        }
+        #fileName {
+            margin-top: 10px;
+            font-style: italic;
+            color: #555;
+        }
+        button#processBtn {
+            background-color: #28a745;
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+            display: block;
+            margin: 20px auto 0;
+        }
+        button#processBtn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        button#processBtn:hover:not(:disabled) {
+            background-color: #218838;
+        }
+        .output-section {
+            margin-top: 20px;
+        }
+        .output-box {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+            min-height: 150px;
+            overflow-y: auto;
+            white-space: pre-wrap; /* Crucial for preserving whitespace and newlines from HTML */
+            word-wrap: break-word;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+            font-size: 0.9em;
+            border: 1px solid #ced4da;
+            margin-bottom: 20px;
+        }
+        .output-box h2, .output-section h2 {
+            margin-top: 0;
+            color: #007bff;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+    /* --- 新增以下規則來控制 Markdown 輸出結果中的 H1, H2, H3 --- */
+    #markdownResult h1,
+    #thinkingProcess h1 { /* 如果思考過程中也可能有 H1 */
+        font-size: 2em; /* 可以調整字體大小 */
+        margin-top: 0.8em;    /* 調整 H1 上方間距 */
+        margin-bottom: 0.4em; /* 調整 H1 下方間距 */
+        line-height: 1.0;   /* 調整 H1 文本行高 (如果H1可能換行) */
+    }
+
+    #markdownResult h2,
+    #thinkingProcess h2 { /* marked.js 生成的 H2 */
+        font-size: 1.5em;
+        margin-top: 0.7em;
+        margin-bottom: 0.35em;
+        line-height: 1.0;
+        /* 注意：這裡的 #markdownResult h2 會覆蓋上面 .output-box h2 的 margin-bottom,
+           如果 .output-box h2 是指區域標題"Markdown 結果"本身，而非內容裡的H2，
+           那麼這個選擇器是OK的。你需要根據你的實際HTML結構決定。
+           如果 .output-section h2 指的是"Markdown 結果"這個固定的標題，那上面的規則沒問題。
+           而 #markdownResult h2 指的是LLM生成的內容裡面的H2。
+        */
+    }
+
+    #markdownResult h3,
+    #thinkingProcess h3 { /* marked.js 生成的 H3 */
+        font-size: 1.17em;
+        margin-top: 0.6em;
+        margin-bottom: 0.3em;
+        line-height: 1.0;
+    }
+
+    /* 你也可以為更低級別的標題 (h4, h5, h6) 添加類似的規則 */
+    #markdownResult h4,
+    #thinkingProcess h4 {
+        font-size: 1em;
+        margin-top: 0.5em;
+        margin-bottom: 0.25em;
+        line-height: 1.0;
+    }
+		
+        #markdownResult pre, #thinkingProcess pre {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        #markdownResult code, #thinkingProcess code {
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+        }
+        #markdownResult table, #thinkingProcess table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-bottom: 1em;
+        }
+        #markdownResult th, #markdownResult td, #thinkingProcess th, #thinkingProcess td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        #markdownResult th, #thinkingProcess th {
+            background-color: #f2f2f2;
+        }
+        #markdownResult blockquote, #thinkingProcess blockquote {
+            border-left: 4px solid #ccc;
+            padding-left: 10px;
+            color: #666;
+            margin-left: 0;
+        }
+        #status {
+            margin-top: 15px;
+            font-weight: bold;
+            text-align: center;
+        }
+        .loader {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+            display: none;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>PDF 轉 Markdown</h1>
+        <div class="upload-section">
+            <input type="file" id="pdfFile" accept=".pdf">
+            <label for="pdfFile">選擇 PDF 檔案</label>
+            <p id="fileName">尚未選擇檔案</p>
+        </div>
+        <button id="processBtn" disabled>開始轉換</button>
+        <div class="loader" id="loader"></div>
+        <div id="status"></div>
+        <div class="output-section">
+            <h2>思考過程</h2>
+            <div id="thinkingProcess" class="output-box">等待上傳和處理...</div>
+        </div>
+        <div class="output-section">
+            <h2>Markdown 結果</h2>
+            <div id="markdownResult" class="output-box">等待轉換結果...</div>
+        </div>
+    </div>
+
+    <script>
+        const pdfFileInput = document.getElementById('pdfFile');
+        const fileNameDisplay = document.getElementById('fileName');
+        const processBtn = document.getElementById('processBtn');
+        const thinkingProcessDiv = document.getElementById('thinkingProcess');
+        const markdownResultDiv = document.getElementById('markdownResult');
+        const statusDiv = document.getElementById('status');
+        const loader = document.getElementById('loader');
+
+        let currentPdfFile = null;
+        let sseBuffer = ""; // Buffer for incomplete SSE messages
+
+        pdfFileInput.addEventListener('change', function(event) {
+            currentPdfFile = event.target.files[0];
+            if (currentPdfFile) {
+                fileNameDisplay.textContent = currentPdfFile.name;
+                processBtn.disabled = false;
+                statusDiv.textContent = '';
+            } else {
+                fileNameDisplay.textContent = '尚未選擇檔案';
+                processBtn.disabled = true;
+            }
+        });
+
+        processBtn.addEventListener('click', async function() {
+            if (!currentPdfFile) {
+                statusDiv.textContent = '請先選擇一個 PDF 檔案。';
+                return;
+            }
+
+            processBtn.disabled = true;
+            loader.style.display = 'block';
+            thinkingProcessDiv.innerHTML = '處理中...';
+            markdownResultDiv.innerHTML = '處理中...';
+            statusDiv.textContent = '正在上傳並處理 PDF...';
+
+            const formData = new FormData();
+            formData.append('pdfFile', currentPdfFile);
+
+            let accumulatedThinkContent = "";
+            let accumulatedMarkdownContent = "";
+            let inThinkBlock = false;
+            let thinkTagStarted = false;
+            let thinkBlockProcessed = false;
+            sseBuffer = ""; // Reset buffer for new request
+
+            thinkingProcessDiv.innerHTML = "";
+            markdownResultDiv.innerHTML = "";
+
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({ error: `HTTP error! status: ${response.status}` }));
+                    throw new Error(errData.error || `HTTP error! status: ${response.status}`);
+                }
+                if (!response.body) {
+                    throw new Error("Response body is null.");
+                }
+
+                statusDiv.textContent = '已連接到伺服器，正在接收數據...';
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder(); // Defaults to utf-8
+
+                let lastThinkScrollTop = 0;
+                let lastMarkdownScrollTop = 0;
+
+                function processSseChunk(chunkString) {
+                    sseBuffer += chunkString;
+                    let boundaryIndex;
+                    
+                    // Process all complete SSE messages in the buffer
+                    // SSE messages end with "\n\n"
+                    while ((boundaryIndex = sseBuffer.indexOf('\n\n')) !== -1) {
+                        const rawSseMessage = sseBuffer.substring(0, boundaryIndex);
+                        sseBuffer = sseBuffer.substring(boundaryIndex + 2); // Skip \n\n
+
+                        if (rawSseMessage.trim() === "") continue; // Skip if it was just newlines
+
+                        const messageLines = rawSseMessage.split('\n');
+                        let currentEventData = "";
+                        let isFirstDataLine = true;
+
+                        messageLines.forEach(line => {
+                            if (line.startsWith('data:')) {
+                                if (!isFirstDataLine) {
+                                    currentEventData += '\n'; // Add newline for multi-line data fields
+                                }
+								
+								// --- 修改開始 ---
+								// 獲取 "data:" 後面的內容
+								let fieldValue = line.substring(5); 
+								
+								// SSE 規範允許 "data:" 後面有一個可選的空格，這個空格不屬於數據本身。
+								// 如果存在這個可選空格，我們移除它，以保留數據本身可能有的前導空格。
+								if (fieldValue.startsWith(' ')) {
+									fieldValue = fieldValue.substring(1);
+								}
+								// --- 修改結束 ---
+								
+								currentEventData += fieldValue;
+                                isFirstDataLine = false;
+                            } else if (line.startsWith(':')) {
+                                // This is a comment line in SSE, ignore.
+                            } else if (line.trim() !== "") {
+                                // This could be an event type (event: <type>) or id (id: <id>)
+                                // For now, we are only interested in data.
+                            }
+                        });
+                        
+                        if (currentEventData) { // Ensure we have data to process
+                            // console.log("Reconstructed SSE Data:", JSON.stringify(currentEventData)); // For debugging
+
+                            let dataContent = currentEventData; // This is our fully reconstructed data for one event
+
+                            if (dataContent === "[STREAM_END]") {
+                                console.log("Stream ended by [STREAM_END] signal.");
+                                // The 'done' flag from reader.read() will handle actual termination.
+                                return; // Stop processing this specific "event"
+                            }
+                            if (dataContent.startsWith('[LLM_REQUEST_ERROR]') || dataContent.startsWith('[LLM_STREAM_ERROR]')) {
+                                statusDiv.textContent = `錯誤: ${dataContent}`;
+                                const errorMsg = `<p style="color:red;">伺服器錯誤: ${dataContent}</p>`;
+                                if (inThinkBlock || !thinkBlockProcessed) {
+                                    thinkingProcessDiv.innerHTML += errorMsg;
+                                } else {
+                                    markdownResultDiv.innerHTML += errorMsg;
+                                }
+                                return; // Stop processing this specific "event"
+                            }
+
+                            // --- Logic to handle <think> and markdown content separation ---
+                            let textForThink = "";
+                            let textForMarkdown = "";
+
+                            if (!thinkBlockProcessed) {
+                                if (!thinkTagStarted && dataContent.includes("<think>")) {
+                                    thinkTagStarted = true;
+                                    inThinkBlock = true;
+                                    const thinkStartIndex = dataContent.indexOf("<think>") + "<think>".length;
+                                    textForThink = dataContent.substring(thinkStartIndex);
+                                } else if (thinkTagStarted && dataContent.includes("</think>")) {
+                                    const thinkEndIndex = dataContent.indexOf("</think>");
+                                    textForThink = dataContent.substring(0, thinkEndIndex);
+                                    inThinkBlock = false;
+                                    thinkBlockProcessed = true;
+                                    textForMarkdown = dataContent.substring(thinkEndIndex + "</think>".length);
+                                } else if (inThinkBlock) {
+                                    textForThink = dataContent;
+                                } else if (thinkTagStarted && !inThinkBlock && !thinkBlockProcessed) {
+                                     textForThink = dataContent; // Content between <think> pieces
+                                } else {
+                                    if (!thinkTagStarted) { // Content before any <think> tag (fallback)
+                                        textForMarkdown = dataContent;
+                                    }
+                                }
+                            } else { // </think> has been processed, all subsequent content is markdown
+                                textForMarkdown = dataContent;
+                            }
+
+                            if (textForThink) {
+                                accumulatedThinkContent += textForThink;
+                            }
+                            if (textForMarkdown) {
+                                accumulatedMarkdownContent += textForMarkdown;
+                            }
+
+                            // --- Live Rendering ---
+                            if (thinkTagStarted && !thinkBlockProcessed && accumulatedThinkContent.length > 0) {
+                                lastThinkScrollTop = thinkingProcessDiv.scrollTop;
+                                thinkingProcessDiv.innerHTML = marked.parse(accumulatedThinkContent + (inThinkBlock ? "..." : ""));
+                                thinkingProcessDiv.scrollTop = lastThinkScrollTop;
+                            }
+                            if (accumulatedMarkdownContent.length > 0) {
+                                lastMarkdownScrollTop = markdownResultDiv.scrollTop;
+                                markdownResultDiv.innerHTML = marked.parse(accumulatedMarkdownContent);
+                                markdownResultDiv.scrollTop = lastMarkdownScrollTop;
+                            }
+                        }
+                    }
+                }
+
+
+                function readLoop() {
+                    reader.read().then(({ done, value }) => {
+                        if (done) {
+                            if(sseBuffer.trim() !== "") { // Process any remaining data in buffer
+                                processSseChunk(sseBuffer + '\n\n'); // Add terminator to ensure it's processed
+                                sseBuffer = "";
+                            }
+                            statusDiv.textContent = '轉換完成！';
+                            loader.style.display = 'none';
+                            processBtn.disabled = false;
+                            // Final render for any remaining accumulated content
+                            if (accumulatedThinkContent.length > 0 && !thinkBlockProcessed) { // If think block was started but not finished
+                                thinkingProcessDiv.innerHTML = marked.parse(accumulatedThinkContent);
+                            } else if (accumulatedThinkContent.length > 0 && thinkBlockProcessed) {
+                                 thinkingProcessDiv.innerHTML = marked.parse(accumulatedThinkContent);
+                            }
+
+                            if (accumulatedMarkdownContent.length > 0) {
+                                markdownResultDiv.innerHTML = marked.parse(accumulatedMarkdownContent);
+                            }
+                            return;
+                        }
+                        const chunkString = decoder.decode(value, { stream: true });
+                        processSseChunk(chunkString);
+                        readLoop();
+                    }).catch(error => {
+                        console.error('Stream reading error:', error);
+                        statusDiv.textContent = `流讀取錯誤: ${error.message}`;
+                        loader.style.display = 'none';
+                        processBtn.disabled = false;
+                    });
+                }
+                readLoop();
+
+            } catch (error) {
+                console.error('Error during fetch/upload:', error);
+                statusDiv.textContent = `處理失敗: ${error.message}`;
+                markdownResultDiv.innerHTML = `<p style="color:red;">錯誤: ${error.message}</p>`;
+                loader.style.display = 'none';
+                processBtn.disabled = false;
+            }
+        });
+
+        marked.setOptions({
+            renderer: new marked.Renderer(),
+            pedantic: false,
+            gfm: true,
+            breaks: true, // Render single newlines in Markdown as <br>
+            sanitize: false,
+            smartLists: true,
+            smartypants: false,
+            xhtml: false
+        });
+    </script>
+</body>
+</html>

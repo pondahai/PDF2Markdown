@@ -1,0 +1,20 @@
+# Flask and web server related
+Flask>=2.0 # 或者你正在使用的更精確版本，例如 Flask==2.3.2
+
+# PDF processing
+PyMuPDF>=1.18.14 # for fitz (直接文本提取)
+pdf2image>=1.16.0 # PDF to image conversion (for OCR)
+                          # 注意: pdf2image 依賴外部的 Poppler 工具
+
+# OCR
+pytesseract>=0.3.8      # Tesseract OCR wrapper
+                          # 注意: pytesseract 依賴外部的 Tesseract OCR 引擎
+
+# HTTP requests (for LLM API call)
+requests>=2.25.0
+
+# Environment variable management
+python-dotenv>=0.19.0
+
+# Optional: For type hinting if you use it extensively, though not strictly a runtime dependency
+# typing_extensions 
