@@ -2,6 +2,8 @@
 
 這是一個 Web 應用程式，允許使用者上傳 PDF 文件，將其內容（通過直接文本提取和 OCR）發送給大型語言模型 (LLM)，並將 LLM 轉換後的 Markdown 結果流式顯示在前端。應用程式還會顯示 LLM 的「思考過程」。
 
+![image](https://github.com/user-attachments/assets/382409f5-ef5f-46c4-acc3-5ea534d934f9)
+
 ## 功能
 
 *   **PDF 上傳**: 使用者可以通過網頁介面選擇並上傳 PDF 文件。
