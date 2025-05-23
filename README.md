@@ -46,8 +46,8 @@
 ### 1. 克隆倉庫
 
 ```bash
-git clone <你的倉庫URL>
-cd <倉庫目錄名>
+git clone https://github.com/pondahai/PDF2Markdown
+cd PDF2Markdown
 ```
 
 ### 2. 安裝外部系統依賴
