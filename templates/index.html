@@ -92,12 +92,66 @@
             border: 1px solid #ced4da;
             margin-bottom: 20px;
         }
-        .output-box h2, .output-section h2 {
+        /* 新增：折疊按鈕樣式 */
+        .toggle-button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 3px 8px;
+            font-size: 0.8em;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 10px;
+            transition: background-color 0.3s ease;
+        }
+        .toggle-button:hover {
+            background-color: #0056b3;
+        }
+        .output-section h2 { /* 保持原有樣式，確保按鈕能垂直對齊 */
             margin-top: 0;
             color: #007bff;
             border-bottom: 2px solid #eee;
             padding-bottom: 10px;
+            display: flex; /* 使標題和按鈕在同一行 */
+            align-items: center; /* 垂直居中對齊 */
+            justify-content: space-between; /* 將標題推到左邊，按鈕推到右邊（如果需要）或者按鈕緊跟標題 */
         }
+        
+        /* 如果希望按鈕緊跟標題文字 */
+        .output-section h2 .title-text {
+            margin-right: auto; /* 將標題文本推向左側，為按鈕留出空間 */
+        }
+
+
+        .output-box.collapsed { /* 新增：折疊後的 output-box 樣式 */
+            max-height: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+            overflow: hidden;
+            border-top-width: 0; /* 如果有邊框，折疊時也隱藏 */
+            border-bottom-width: 0;
+            margin-bottom: 0; /* 折疊時移除底部外邊距 */
+            opacity: 0;
+            transition: max-height 0.5s ease-out, padding-top 0.5s ease-out, padding-bottom 0.5s ease-out, opacity 0.3s ease-out, margin-bottom 0.5s ease-out;
+        }
+        .output-box {
+            /* ... 保留原有 output-box 樣式 ... */
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+            min-height: 50px; /* 即使是空的，也給一點高度，除非折疊 */
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+            font-size: 0.9em;
+            border: 1px solid #ced4da;
+            margin-bottom: 20px;
+            max-height: 500px; /* 初始最大高度，防止過長 */
+            opacity: 1;
+            transition: max-height 0.5s ease-in, padding-top 0.5s ease-in, padding-bottom 0.5s ease-in, opacity 0.3s ease-in 0.2s, margin-bottom 0.5s ease-in;
+        }
+
     /* --- 新增以下規則來控制 Markdown 輸出結果中的 H1, H2, H3 --- */
     #markdownResult h1,
     #thinkingProcess h1 { /* 如果思考過程中也可能有 H1 */
@@ -200,8 +254,11 @@
         <div class="loader" id="loader"></div>
         <div id="status"></div>
         <div class="output-section">
-            <h2>思考過程</h2>
-            <div id="thinkingProcess" class="output-box">等待上傳和處理...</div>
+            <h2>
+                <span class="title-text">思考過程</span>
+                <button id="toggleThinkingProcess" class="toggle-button" aria-expanded="true" aria-controls="thinkingProcessBox">收起</button>
+            </h2>
+            <div id="thinkingProcessBox" class="output-box">等待上傳和處理...</div>
         </div>
         <div class="output-section">
             <h2>Markdown 結果</h2>
@@ -213,7 +270,8 @@
         const pdfFileInput = document.getElementById('pdfFile');
         const fileNameDisplay = document.getElementById('fileName');
         const processBtn = document.getElementById('processBtn');
-        const thinkingProcessDiv = document.getElementById('thinkingProcess');
+        const thinkingProcessDiv = document.getElementById('thinkingProcessBox');
+        const toggleThinkingBtn = document.getElementById('toggleThinkingProcess');
         const markdownResultDiv = document.getElementById('markdownResult');
         const statusDiv = document.getElementById('status');
         const loader = document.getElementById('loader');
@@ -241,6 +299,11 @@
 
             processBtn.disabled = true;
             loader.style.display = 'block';
+            if (thinkingProcessDiv.classList.contains('collapsed')) {
+                thinkingProcessDiv.classList.remove('collapsed');
+                toggleThinkingBtn.textContent = '收起';
+                toggleThinkingBtn.setAttribute('aria-expanded', 'true');
+            }
             thinkingProcessDiv.innerHTML = '處理中...';
             markdownResultDiv.innerHTML = '處理中...';
             statusDiv.textContent = '正在上傳並處理 PDF...';
@@ -437,6 +500,31 @@
                 processBtn.disabled = false;
             }
         });
+        // 新增：折疊/展開邏輯
+        if (toggleThinkingBtn && thinkingProcessDiv) {
+            toggleThinkingBtn.addEventListener('click', function() {
+                const isExpanded = thinkingProcessDiv.classList.toggle('collapsed');
+                // toggle('collapsed') 返回 true 如果 class 被移除 (即展開了), false 如果 class 被添加 (即折疊了)
+                // 所以我們需要反轉這個邏輯來設置 aria-expanded 和按鈕文本
+                if (thinkingProcessDiv.classList.contains('collapsed')) {
+                    // 現在是折疊的
+                    toggleThinkingBtn.textContent = '展開';
+                    toggleThinkingBtn.setAttribute('aria-expanded', 'false');
+                } else {
+                    // 現在是展開的
+                    toggleThinkingBtn.textContent = '收起';
+                    toggleThinkingBtn.setAttribute('aria-expanded', 'true');
+                }
+            });
+             // 默認讓思考過程展開，如果初始是 collapsed 狀態
+            if (thinkingProcessDiv.classList.contains('collapsed')) {
+                toggleThinkingBtn.textContent = '展開';
+                toggleThinkingBtn.setAttribute('aria-expanded', 'false');
+            } else {
+                toggleThinkingBtn.textContent = '收起';
+                toggleThinkingBtn.setAttribute('aria-expanded', 'true');
+            }
+        }
 
         marked.setOptions({
             renderer: new marked.Renderer(),
